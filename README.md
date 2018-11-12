@@ -8,6 +8,16 @@ Save some time importing .ovpn to the network manager and entering credentials w
 - nordvpn account
 
 ## Setup
+### Alias
+For ease of use, add the script to your .bash_alias:
+~~~
+alias vpn='sudo /path/to/git/nordvpn_connect/connect.py'
+~~~
+In that case you should also mark the script as executable: `chmod +x connect.py`.
+
+### Add credentials
+Use `vpn init` to save your credentials that will be used for all connections. Or do it manually:
+
 Put your nordvpn credentials into a file at `/etc/openvpn/login.conf` and give it the least permissions possible.
 ~~~
 # vi /etc/openvpn/login.conf
@@ -19,12 +29,6 @@ This file should contain only your credentials on one line each:
 myusername
 Pa55w0rd
 ~~~
-
-For ease of use, add the script to your .bash_alias:
-~~~
-alias vpn='sudo /path/to/git/nordvpn_connect/connect.py'
-~~~
-In that case you should also mark the script as executable: `chmod +x connect.py`.
 
 
 ## Commands

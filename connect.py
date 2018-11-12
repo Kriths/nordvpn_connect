@@ -6,6 +6,7 @@ import subprocess
 import signal
 import tempfile
 import requests
+import getpass
 
 
 PID_FILE = '/run/nvpn.pid'
@@ -18,6 +19,7 @@ def showHelp(cmd=None):
   print(" vpn up de - Connect to best available vpn server in a country")
   print(" vpn up de123 - Connect to specific vpn server")
   print(" vpn down - Kill vpn connection")
+  print(" vpn init - Enter credentials and save to file, then update")
   print(" vpn status - Check if process is currently running")
   print(" vpn update - Download and refresh config file from nord cdn")
 
@@ -103,7 +105,6 @@ def handleUpdate():
   subprocess.Popen(['wget', '-O'+zipfile, 'https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip'], stdout=subprocess.PIPE).wait()
   subprocess.Popen(['unzip', '-o', '-d'+OVPN_CONFIGS, zipfile], stdout=subprocess.DEVNULL).wait()
 
-
 def handleStatus():
   pid = getRunningPid()
   if pid == -1:
@@ -115,6 +116,14 @@ def handleStatus():
   print("Current IP:   " + ipInfo['ip'])
   print("Country:      " + ipInfo['country'])
   print("Approx. City: " + ipInfo['city'])
+
+def handleInit():
+  user = input("Username: ")
+  passw = getpass.getpass()
+  with open(CREDENTIALS_FILE, 'w') as credFile:
+    credFile.write('%s\n%s' % (user, passw))
+  os.chmod(CREDENTIALS_FILE, 0o400)
+  handleUpdate()
 
 
 # ENTRY POINT
@@ -138,6 +147,8 @@ if __name__ == '__main__':
     handleUpdate()
   elif cmd == 'status':
     handleStatus()
+  elif cmd == 'init':
+    handleInit()
   elif cmd == 'help':
     showHelp()
   else:
