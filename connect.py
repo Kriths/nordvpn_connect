@@ -14,22 +14,24 @@ OVPN_CONFIGS = '/etc/openvpn'
 CREDENTIALS_FILE = '/etc/openvpn/login.conf'
 
 def showHelp(cmd=None):
-  print("Usage: vpn [up|down|update|status] <server name>")
+  print("Usage: vpn [up|down|update|status] <server name> [options]")
   print(" vpn up - Connect to best available vpn server")
   print(" vpn up de - Connect to best available vpn server in a country")
   print(" vpn up de123 - Connect to specific vpn server")
+  print(" vpn up -t / -u  - Switch between tcp and udp (default: -u)")
   print(" vpn down - Kill vpn connection")
   print(" vpn init - Enter credentials and save to file, then update")
   print(" vpn status - Check if process is currently running")
   print(" vpn update - Download and refresh config file from nord cdn")
 
-def findBestServer(country=None):
+def findBestServer(proto, country=None):
   requestUrl = 'https://nordvpn.com/wp-admin/admin-ajax.php?action=servers_recommendations'
+  techName = 'OpenVPN %s' % proto.upper()
   if country is not None:
     countryId = -1
     techs = requests.get('https://nordvpn.com/wp-admin/admin-ajax.php?action=servers_technologies').json()
     for tech in techs:
-      if tech['name'] == 'OpenVPN TCP':
+      if tech['name'] == techName:
         for cnt in tech['countries']:
           if cnt['code'].lower() == country.lower():
             countryId = cnt['id']
@@ -68,21 +70,36 @@ def handleUp(args):
   if getRunningPid() != -1:
     print("Connection already running.")
     exit(1)
-  if len(args) == 0:
-    server = findBestServer()
-  elif args[0] == 'help':
+  
+  reqServer = None
+  proto = 'UDP'
+  for arg in args:
+    if arg == '--tcp' or arg == '-t':
+      proto = 'TCP'
+    elif arg == '--udp' or arg == '-u':
+      proto = 'UDP'
+    elif not arg[0] == '-':
+      reqServer = arg
+    else:
+      print('Unknown command: %s' % arg)
+      showHelp('up')
+      exit(1)
+
+  if not reqServer:
+    server = findBestServer(proto)
+  elif reqServer == 'help':
     showHelp('up')
     exit(0)
-  elif re.match(r'[a-z]+\d+', args[0]):
-    server = args[0]
-  elif re.match(r'[a-z]+', args[0]):
-    server = findBestServer(args[0])
+  elif re.match(r'[a-z]+\d+', reqServer):
+    server = reqServer
+  elif re.match(r'[a-z]+', reqServer):
+    server = findBestServer(proto, reqServer)
   else:
     showHelp('up')
     exit(1)
 
-  print("Requresting connection to %s" % server)
-  ovpnFile = '%s/ovpn_tcp/%s.nordvpn.com.tcp.ovpn' % (OVPN_CONFIGS, server)
+  print("Requresting connection to %s.%s" % (proto, server))
+  ovpnFile = '%s/ovpn_%s/%s.nordvpn.com.%s.ovpn' % (OVPN_CONFIGS, proto.lower(), server, proto.lower())
   if not os.path.isfile(ovpnFile):
     print("Could not find server config %s" % server)
     exit(1)
