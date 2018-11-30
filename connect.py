@@ -132,7 +132,8 @@ def handleStatus():
   ipInfo = requests.get('http://ifconfig.co/json').json()
   print("Current IP:   " + ipInfo['ip'])
   print("Country:      " + ipInfo['country'])
-  print("Approx. City: " + ipInfo['city'])
+  if 'city' in ipInfo:
+    print("Approx. City: " + ipInfo['city'])
 
 def handleInit():
   user = input("Username: ")
