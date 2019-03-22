@@ -42,7 +42,7 @@ def findBestServer(proto, country=None):
       exit(1)
     requestUrl += '&filters={"country_id":%d}' % countryId
   servers = requests.get(requestUrl).json()
-  return servers[0]['subdomain']
+  return servers[0]['hostname'].split('.')[0]
 
 def getRunningPid():
   try:
