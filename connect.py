@@ -98,7 +98,7 @@ def handleUp(args):
     showHelp('up')
     exit(1)
 
-  print("Requresting connection to %s.%s" % (proto, server))
+  print("Requesting connection to %s.%s" % (proto, server))
   ovpnFile = '%s/ovpn_%s/%s.nordvpn.com.%s.ovpn' % (OVPN_CONFIGS, proto.lower(), server, proto.lower())
   if not os.path.isfile(ovpnFile):
     print("Could not find server config %s" % server)
