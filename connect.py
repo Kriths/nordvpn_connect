@@ -40,7 +40,7 @@ def find_best_server(proto, country=None):
                 break
         if country_id == -1:
             print("Could not find country %s" % country)
-            exit(1)
+            sys.exit(1)
         request_url += '&filters={"country_id":%d}' % country_id
     servers = requests.get(request_url).json()
     return servers[0]['hostname'].split('.')[0]
@@ -71,7 +71,7 @@ def get_running_pid():
 def handle_up(args):
     if get_running_pid() != -1:
         print("Connection already running.")
-        exit(1)
+        sys.exit(1)
 
     req_server = None
     proto = 'UDP'
@@ -85,26 +85,26 @@ def handle_up(args):
         else:
             print('Unknown command: %s' % arg)
             show_help('up')
-            exit(1)
+            sys.exit(1)
 
     if not req_server:
         server = find_best_server(proto)
     elif req_server == 'help':
         show_help('up')
-        exit(0)
+        sys.exit(0)
     elif re.match(r'[a-z]+\d+', req_server):
         server = req_server
     elif re.match(r'[a-z]+', req_server):
         server = find_best_server(proto, req_server)
     else:
         show_help('up')
-        exit(1)
+        sys.exit(1)
 
     print("Requesting connection to %s.%s" % (proto, server))
     ovpn_file = '%s/ovpn_%s/%s.nordvpn.com.%s.ovpn' % (OVPN_CONFIGS, proto.lower(), server, proto.lower())
     if not os.path.isfile(ovpn_file):
         print("Could not find server config %s" % server)
-        exit(1)
+        sys.exit(1)
     os.system("sed -i 's,^auth-user-pass$,auth-user-pass %s,g' %s" % (CREDENTIALS_FILE, ovpn_file))
     proc = subprocess.Popen(['openvpn', ovpn_file], shell=False, stdout=subprocess.PIPE)
     with open(PID_FILE, 'w') as pidFile:
@@ -115,7 +115,7 @@ def handle_down(args):
     pid = get_running_pid()
     if pid == -1:
         print("No process currently running.")
-        exit(1)
+        sys.exit(1)
     os.kill(pid, signal.SIGTERM)
     os.remove(PID_FILE)
 
@@ -155,12 +155,12 @@ def handle_init():
 def main():
     if os.getuid() != 0 or os.geteuid() != 0:
         print("Most be run as root")
-        exit(255)
+        sys.exit(255)
 
     # Check arguments
     if len(sys.argv) <= 1:
         show_help()
-        exit(1)
+        sys.exit(1)
 
     cmd = sys.argv[1]
     args = sys.argv[2:]
@@ -178,7 +178,7 @@ def main():
         show_help()
     else:
         show_help()
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == '__main__':
