@@ -13,7 +13,7 @@ OVPN_CONFIGS = '/etc/openvpn'
 CREDENTIALS_FILE = '/etc/openvpn/login.conf'
 
 
-def showHelp(cmd=None):
+def show_help(cmd=None):
     print("Usage: vpn [up|down|update|status] <server name> [options]")
     print(" vpn up - Connect to best available vpn server")
     print(" vpn up de - Connect to best available vpn server in a country")
@@ -25,28 +25,28 @@ def showHelp(cmd=None):
     print(" vpn update - Download and refresh config file from nord cdn")
 
 
-def findBestServer(proto, country=None):
-    requestUrl = 'https://nordvpn.com/wp-admin/admin-ajax.php?action=servers_recommendations'
-    techName = 'OpenVPN %s' % proto.upper()
+def find_best_server(proto, country=None):
+    request_url = 'https://nordvpn.com/wp-admin/admin-ajax.php?action=servers_recommendations'
+    tech_name = 'OpenVPN %s' % proto.upper()
     if country is not None:
-        countryId = -1
+        country_id = -1
         techs = requests.get('https://nordvpn.com/wp-admin/admin-ajax.php?action=servers_technologies').json()
         for tech in techs:
-            if tech['name'] == techName:
+            if tech['name'] == tech_name:
                 for cnt in tech['countries']:
                     if cnt['code'].lower() == country.lower():
-                        countryId = cnt['id']
+                        country_id = cnt['id']
                         break
                 break
-        if countryId == -1:
-            print("Cound not find country %s" % country)
+        if country_id == -1:
+            print("Could not find country %s" % country)
             exit(1)
-        requestUrl += '&filters={"country_id":%d}' % countryId
-    servers = requests.get(requestUrl).json()
+        request_url += '&filters={"country_id":%d}' % country_id
+    servers = requests.get(request_url).json()
     return servers[0]['hostname'].split('.')[0]
 
 
-def getRunningPid():
+def get_running_pid():
     try:
         with open(PID_FILE, 'r') as pidFile:
             line = pidFile.readline()
@@ -59,21 +59,21 @@ def getRunningPid():
         os.remove(PID_FILE)
         return -1
 
-    pName, _ = subprocess.Popen(['ps', '-p%d' % pid, '-ocomm='], stdout=subprocess.PIPE).communicate()
-    if b'openvpn' in pName:
+    p_name, _ = subprocess.Popen(['ps', '-p%d' % pid, '-ocomm='], stdout=subprocess.PIPE).communicate()
+    if b'openvpn' in p_name:
         return pid
 
     os.remove(PID_FILE)
     return -1
 
 
-## MAIN HANDLERS
-def handleUp(args):
-    if getRunningPid() != -1:
+# MAIN HANDLERS
+def handle_up(args):
+    if get_running_pid() != -1:
         print("Connection already running.")
         exit(1)
 
-    reqServer = None
+    req_server = None
     proto = 'UDP'
     for arg in args:
         if arg == '--tcp' or arg == '-t':
@@ -81,38 +81,38 @@ def handleUp(args):
         elif arg == '--udp' or arg == '-u':
             proto = 'UDP'
         elif not arg[0] == '-':
-            reqServer = arg
+            req_server = arg
         else:
             print('Unknown command: %s' % arg)
-            showHelp('up')
+            show_help('up')
             exit(1)
 
-    if not reqServer:
-        server = findBestServer(proto)
-    elif reqServer == 'help':
-        showHelp('up')
+    if not req_server:
+        server = find_best_server(proto)
+    elif req_server == 'help':
+        show_help('up')
         exit(0)
-    elif re.match(r'[a-z]+\d+', reqServer):
-        server = reqServer
-    elif re.match(r'[a-z]+', reqServer):
-        server = findBestServer(proto, reqServer)
+    elif re.match(r'[a-z]+\d+', req_server):
+        server = req_server
+    elif re.match(r'[a-z]+', req_server):
+        server = find_best_server(proto, req_server)
     else:
-        showHelp('up')
+        show_help('up')
         exit(1)
 
     print("Requesting connection to %s.%s" % (proto, server))
-    ovpnFile = '%s/ovpn_%s/%s.nordvpn.com.%s.ovpn' % (OVPN_CONFIGS, proto.lower(), server, proto.lower())
-    if not os.path.isfile(ovpnFile):
+    ovpn_file = '%s/ovpn_%s/%s.nordvpn.com.%s.ovpn' % (OVPN_CONFIGS, proto.lower(), server, proto.lower())
+    if not os.path.isfile(ovpn_file):
         print("Could not find server config %s" % server)
         exit(1)
-    os.system("sed -i 's,^auth-user-pass$,auth-user-pass %s,g' %s" % (CREDENTIALS_FILE, ovpnFile))
-    proc = subprocess.Popen(['openvpn', ovpnFile], shell=False, stdout=subprocess.PIPE)
+    os.system("sed -i 's,^auth-user-pass$,auth-user-pass %s,g' %s" % (CREDENTIALS_FILE, ovpn_file))
+    proc = subprocess.Popen(['openvpn', ovpn_file], shell=False, stdout=subprocess.PIPE)
     with open(PID_FILE, 'w') as pidFile:
         pidFile.write(str(proc.pid))
 
 
-def handleDown(args):
-    pid = getRunningPid()
+def handle_down(args):
+    pid = get_running_pid()
     if pid == -1:
         print("No process currently running.")
         exit(1)
@@ -120,7 +120,7 @@ def handleDown(args):
     os.remove(PID_FILE)
 
 
-def handleUpdate():
+def handle_update():
     tmpdir = tempfile.mkdtemp()
     zipfile = tmpdir + '/ovpn.zip'
     subprocess.Popen(['wget', '-O' + zipfile, 'https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip'],
@@ -128,54 +128,58 @@ def handleUpdate():
     subprocess.Popen(['unzip', '-o', '-d' + OVPN_CONFIGS, zipfile], stdout=subprocess.DEVNULL).wait()
 
 
-def handleStatus():
-    pid = getRunningPid()
+def handle_status():
+    pid = get_running_pid()
     if pid == -1:
         print("No process currently running.")
     else:
         print("PID: %d" % pid)
 
-    ipInfo = requests.get('http://ifconfig.co/json').json()
-    print("Current IP:   " + ipInfo['ip'])
-    print("Country:      " + ipInfo['country'])
-    if 'city' in ipInfo:
-        print("Approx. City: " + ipInfo['city'])
+    ip_info = requests.get('https://ifconfig.co/json').json()
+    print("Current IP:   " + ip_info['ip'])
+    print("Country:      " + ip_info['country'])
+    if 'city' in ip_info:
+        print("Approx. City: " + ip_info['city'])
 
 
-def handleInit():
+def handle_init():
     user = input("Username: ")
     passw = getpass.getpass()
     with open(CREDENTIALS_FILE, 'w') as credFile:
         credFile.write('%s\n%s' % (user, passw))
     os.chmod(CREDENTIALS_FILE, 0o400)
-    handleUpdate()
+    handle_update()
 
 
 # ENTRY POINT
-if __name__ == '__main__':
+def main():
     if os.getuid() != 0 or os.geteuid() != 0:
         print("Most be run as root")
         exit(255)
 
     # Check arguments
     if len(sys.argv) <= 1:
-        showHelp()
+        show_help()
         exit(1)
 
     cmd = sys.argv[1]
     args = sys.argv[2:]
     if cmd == 'up':
-        handleUp(args)
+        handle_up(args)
     elif cmd == 'down':
-        handleDown(args)
+        handle_down(args)
     elif cmd == 'update':
-        handleUpdate()
+        handle_update()
     elif cmd == 'status':
-        handleStatus()
+        handle_status()
     elif cmd == 'init':
-        handleInit()
+        handle_init()
     elif cmd == 'help':
-        showHelp()
+        show_help()
     else:
-        showHelp()
+        show_help()
         exit(1)
+
+
+if __name__ == '__main__':
+    main()
